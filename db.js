@@ -1,4 +1,3 @@
-const inquirer = require('inquirer');
 const ctable = require('console.table');
 const mysql = require('mysql2/promise');
 const fs = require('fs');
@@ -33,7 +32,8 @@ async function readFile(filePath) {
     }
 }
 
-// refresh local departments array
+// refresh local arrays
+
 async function refreshDepartments(db) {
     temp = await db.query("select * from department");
     departments = temp[0];
@@ -47,6 +47,15 @@ async function refreshRoles(db) {
 async function refreshEmployees(db) {
     temp = await db.query("select * from employee");
     employees = temp[0];
+}
+
+// ^^^^^^^^^^^^^^^^^^^
+
+// init
+async function init(db) {
+    await refreshDepartments(db);
+    await refreshRoles(db);
+    await refreshEmployees(db);
 }
 
 
@@ -69,6 +78,9 @@ async function refreshEmployees(db) {
 
 // executes a prewritten query from a file to return a
 // nicely formatted array for console.table
+// arguments:
+//      table: str (must be either 'employee', 'role', or 'department')
+//      db: database connection obj
 async function getAll(table, db) {
     const query = await readFile(`./db/get/${table}.sql`);
     const response = await db.query(query);
@@ -142,7 +154,54 @@ async function addEmployee(first_name, last_name, manager, role, db) {
     }
 }
 
-async function main() {
+// updates a single employee's role
+// includes input verification
+// arguments:
+//      employee_name: str (employee's full name)
+//      new_role: str (title of employee's updated role)
+//      db: database connection obj
+async function updateEmployeeRole(employee_name, new_role, db) {
+
+    const employeeID = employees.findIndex(o => o.first_name.concat(" ", o.last_name) === employee_name)+1;
+    const roleID = roles.findIndex(o => o.title === new_role)+1;
+
+    if (roleID !== 0 && employeeID !== 0) {
+        await db.query(`update employee set role_id = ? where id = ?`, [roleID, employeeID]);
+        console.log(`Updated ${employee_name} to be assigned to ${new_role} role.`);
+        await refreshEmployees(db);
+    } else {
+        console.log(`Invalid role or employee name. roleID:${roleID} employeeID:${employeeID}`);
+    }
+}
+
+// updates a single employee's manager
+// includes input verification
+// arguments:
+//      employee_name: str (employee's full name)
+//      new_manager: str (new manager's full name)
+//      db: database connection obj
+async function updateEmployeeManager(employee_name, new_manager, db) {
+    const employeeID = employees.findIndex(o => o.first_name.concat(" ", o.last_name) === employee_name)+1;
+    let managerID = null;
+    
+    if (new_manager !== '') {
+        managerID = employees.findIndex(o => o.first_name.concat(" ", o.last_name) === new_manager)+1;
+    }
+
+    if (managerID !== 0 && employeeID !== 0 && managerID !== employeeID) {
+        await db.query(`update employee set manager_id = ? where id = ?`, [managerID, employeeID]);
+        if (managerID !== null) {
+            console.log(`Updated ${employee_name} to be assigned to ${new_manager}'s team.`);
+        } else {
+            console.log(`Updated ${employee_name} to have no manager.`);
+        }
+        await refreshEmployees(db);
+    } else {
+        console.log(`Invalid manager or employee name. managerID:${managerID} employeeID:${employeeID}`);
+    }
+}
+
+async function test() {
 
     // create connection to database
     const db = await mysql.createConnection(
@@ -164,17 +223,21 @@ async function main() {
     await refreshRoles(db);
     await refreshEmployees(db);
 
-    await addDepartment("Marketing", db);
+    // await addDepartment("Marketing", db);
 
-    await addRole("Designer", 110000, "Marketing", db);
-    await addRole("Marketing Lead", 165000, "Marketing", db);
+    // await addRole("Designer", 110000, "Marketing", db);
+    // await addRole("Marketing Lead", 165000, "Marketing", db);
 
-    await addEmployee("Sanaz", "Episcopo", "", "Marketing Lead", db);
-    await addEmployee("Colm", "Roncalli", "Sanaz Episcopo", "Designer", db);
-    await addEmployee("Jinan", "Sadler", "Sanaz Episcopo", "Designer", db);
+    // await addEmployee("Sanaz", "Episcopo", "", "Marketing Lead", db);
+    // await addEmployee("Colm", "Roncalli", "Sanaz Episcopo", "Designer", db);
+    // await addEmployee("Jinan", "Sadler", "Sanaz Episcopo", "Designer", db);
     
 
     // await addEmployee("Mai", "Roux", "Tiziano Abbey", "Lawyer");
+
+    // await updateEmployeeRole("Mohamad Bonhomme", "Legal Secretary", db);
+
+    // await updateEmployeeManager("Mohamad Bonhomme", "Camilla Tierney", db);
 
     console.table(await getAll("departments", db));
     console.table(await getAll("roles", db));
@@ -184,4 +247,6 @@ async function main() {
     db.end();
 }
 
-main();
+test();
+
+module.exports = { init, getAll, addDepartment, addRole, addEmployee }
