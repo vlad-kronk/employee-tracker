@@ -79,12 +79,24 @@ async function init(db) {
 // executes a prewritten query from a file to return a
 // nicely formatted array for console.table
 // arguments:
-//      table: str (must be either 'employee', 'role', or 'department')
+//      table: str (must be either 'employees', 'roles', or 'departments')
 //      db: database connection obj
 async function getAll(table, db) {
-    const query = await readFile(`./db/get/${table}.sql`);
+    let query;
+    switch (table) {
+        case 'employee':
+            query = await readFile(`./db/get/employees.sql`);
+        case 'role':
+            query = await readFile(`./db/get/roles.sql`);
+        case 'department':
+            query = await readFile(`./db/get/departments.sql`);
+    }
     const response = await db.query(query);
     return response[0];
+}
+
+async function getAllFromDepartment(dept, db) {
+
 }
 
 // adds an department to the database
