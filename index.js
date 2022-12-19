@@ -110,9 +110,14 @@ async function addEmployee(first_name, last_name, manager, role, db) {
         managerID = employees.find(o => o.first_name.concat(" ", o.last_name) === manager)+1;
     }
 
-    // 
+    // were both the role and the manager name valid?
     if (roleID !== 0 && managerID !== 0) {
-        // add the employee and 
+        // add the employee and refresh the local employees array
+        await db.query(`insert into employee (first_name, last_name, manager_id, role_id) values ("?", "?", ?, ?)`,
+        [first_name, last_name, managerID, roleID]);
+        await refreshEmployees();
+    } else {
+        console.log("Invalid role or manager name.");
     }
 }
 
@@ -135,18 +140,6 @@ async function main() {
     await refreshEmployees();
 
     
-    
-
-    // console.table(await getAll("departments", db));
-
-    // console.table(await getAll("roles", db));
-
-    // console.table(await getAll("employees", db));
-
-    // console.table(departments);
-    // console.table(roles);
-    // console.table(employees);
-
 
     db.end();
 }
