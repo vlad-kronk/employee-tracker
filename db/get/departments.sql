@@ -1,0 +1,1 @@
+select name as Department, id as ID from department;

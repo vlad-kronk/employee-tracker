@@ -1,7 +1,20 @@
 const inquirer = require('inquirer');
 const ctable = require('console.table');
 const mysql = require('mysql2/promise');
+const fs = require('fs');
 require('dotenv').config();
+
+
+// wrapping fs.readFile in a promise
+const readFile = async filePath => {
+    try {
+      const data = await fs.promises.readFile(filePath, 'utf8')
+      return data
+    }
+    catch(err) {
+      console.log(err)
+    }
+}
 
 // departments:
 //     1. Sales
@@ -20,8 +33,12 @@ require('dotenv').config();
 //     8. Legal Team Lead
 //     9. Legal Secretary
 
-async function createEmployee() {
-
+// executes a prewritten query from a file to return a
+// nicely formatted array for console.table
+async function getAll(table, db) {
+    const query = await readFile(`./db/get/${table}.sql`);
+    const response = await db.query(query);
+    return response[0];
 }
 
 async function main() {
@@ -38,9 +55,12 @@ async function main() {
     );
 
 
-    const test = await db.query("select * from employee");
-    console.log(test[0]);
+    console.table(await getAll("departments", db));
+
+    console.table(await getAll("roles", db));
     
+
+    db.end();
 }
 
 main();

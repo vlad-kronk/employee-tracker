@@ -4,14 +4,14 @@ create database employees_db;
 use employees_db;
 
 create table department (
-    id int,
+    id int not null auto_increment,
     name varchar(30),
 
     primary key (id)
 );
 
 create table role (
-    id int,
+    id int not null auto_increment,
     title varchar(30),
     salary decimal,
     department_id int,
@@ -24,7 +24,7 @@ create table role (
 );
 
 create table employee (
-    id int,
+    id int not null auto_increment,
     first_name varchar(30),
     last_name varchar(30),
     manager_id int default null,
