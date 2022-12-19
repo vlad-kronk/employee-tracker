@@ -1,1 +1,1 @@
-select name as Department, id as ID from department;
+select id as ID, name as Department from department;
