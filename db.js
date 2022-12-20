@@ -11,16 +11,6 @@ let employees;
 
 // ----------- HELPERS -----------
 
-
-// forces title case
-function titleCase(str) {
-    let sentence = str.toLowerCase().split(" ");
-    for(let i = 0; i < sentence.length; i++){
-            sentence[i] = sentence[i][0].toUpperCase() + sentence[i].slice(1);
-        }
-    return sentence.join(" ");
-}
-
 // wrapping fs.readFile in a promise
 async function readFile(filePath) {
     try {
@@ -50,6 +40,8 @@ async function refreshEmployees(db) {
 }
 
 // ^^^^^^^^^^^^^^^^^^^
+
+// --------- EXPORTS ----------
 
 // init
 async function init(db) {
@@ -84,19 +76,35 @@ async function init(db) {
 async function getAll(table, db) {
     let query;
     switch (table) {
-        case 'employee':
+        case 'employees':
             query = await readFile(`./db/get/employees.sql`);
-        case 'role':
+            break;
+        case 'roles':
             query = await readFile(`./db/get/roles.sql`);
-        case 'department':
+            break;
+        case 'departments':
             query = await readFile(`./db/get/departments.sql`);
+            break;
+        default:
+            return [];
     }
     const response = await db.query(query);
     return response[0];
 }
 
-async function getAllFromDepartment(dept, db) {
+async function getDepartmentNamesArray(db) {
+    const temp = await getAll('departments', db);
+    return temp.map(o => o.Department);
+}
 
+async function getRoleTitlesArray(db) {
+    const temp = await getAll('roles', db);
+    return temp.map(o => o.Title);
+}
+
+async function getEmployeeNamesArray(db) {
+    const temp = await getAll('employees', db);
+    return temp.map(o => o.Name);
 }
 
 // adds an department to the database
@@ -105,7 +113,7 @@ async function getAllFromDepartment(dept, db) {
 //      db: database connection obj
 async function addDepartment(department, db) {
     // add the department and refresh the local departments array
-    await db.query(`insert into department (name) values (?)`, titleCase(department));
+    await db.query(`insert into department (name) values (?)`, department);
     console.log(`Added ${department} department.`);
     await refreshDepartments(db);
 }
@@ -121,11 +129,15 @@ async function addRole(title, salary, department, db) {
     // will be 0 if department doesn't exist, otherwise will be the ID of the department specified
     const deptID = departments.findIndex(o => o.name === department)+1;
     if (deptID !== 0) {
-        // add the role and refresh the local roles array
-        await db.query(`insert into role (title, salary, department_id) values (?, ?, ?)`,
-        [titleCase(title), salary, deptID]);
-        console.log(`Added ${title} role to ${department} department.`);
-        await refreshRoles(db);
+        if (roles.findIndex(o => o.title === title) === -1) {
+            // add the role and refresh the local roles array
+            await db.query(`insert into role (title, salary, department_id) values (?, ?, ?)`,
+            [title, salary, deptID]);
+            console.log(`Added ${title} role to ${department} department.`);
+            await refreshRoles(db);
+        } else {
+            console.log(`Role ${title} already exists.`);
+        }
     } else {
         console.log(`Department ${department} doesn't exist.`);
     }
@@ -141,17 +153,17 @@ async function addRole(title, salary, department, db) {
 async function addEmployee(first_name, last_name, manager, role, db) {
     // will be 0 if role doesn't exist, otherwise will be the ID of the role specified
     const roleID = roles.findIndex(o => o.title === role)+1;
-    console.log(`roleID:${roleID}`);
+    // console.log(`roleID:${roleID}`);
     
     // value to insert into manager field, default to null
     let managerID = null;
 
     // did the user want a manager?
     if (manager !== "") {
-        console.log(`manager is not null`);
+        // console.log(`manager is not null`);
         // will be 0 if the employee doesn't exist, otherwise will be the ID of the manager specified
         managerID = employees.findIndex(o => o.first_name.concat(" ", o.last_name) === manager)+1;
-        console.log(`${manager}'s employeeID:${managerID}`);
+        // console.log(`${manager}'s employeeID:${managerID}`);
     }
 
     // were both the role and the manager name valid?
@@ -259,6 +271,17 @@ async function test() {
     db.end();
 }
 
-test();
+// test();
 
-module.exports = { init, getAll, addDepartment, addRole, addEmployee }
+module.exports = {
+    init,
+    getAll,
+    addDepartment,
+    addRole,
+    addEmployee,
+    updateEmployeeRole,
+    updateEmployeeManager,
+    getDepartmentNamesArray,
+    getRoleTitlesArray,
+    getEmployeeNamesArray
+}
